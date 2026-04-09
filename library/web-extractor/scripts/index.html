@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<body>
+<script>
+window.ai_edge_gallery_get_result = async (data) => {
+    try {
+        const input = JSON.parse(data);
+        const url = input.url;
+
+        if (!url) {
+            throw new Error("URL is required");
+        }
+
+        // 🔥 Use CORS proxy (IMPORTANT)
+        const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+
+        const response = await fetch(proxyUrl);
+        const html = await response.text();
+
+        // 🔥 Parse HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+
+        // 🔹 Title
+        const title = doc.querySelector("title")?.innerText || "";
+
+        // 🔹 Meta Description
+        const description =
+            doc.querySelector("meta[name='description']")?.content ||
+            doc.querySelector("meta[property='og:description']")?.content ||
+            "";
+
+        // 🔹 Headings
+        const headings = Array.from(doc.querySelectorAll("h1, h2, h3"))
+            .map(h => h.innerText.trim())
+            .filter(Boolean)
+            .slice(0, 20);
+
+        // 🔹 Paragraphs (clean content)
+        let paragraphs = Array.from(doc.querySelectorAll("p"))
+            .map(p => p.innerText.trim())
+            .filter(text => text.length > 50); // remove noise
+
+        // Limit for mobile performance
+        paragraphs = paragraphs.slice(0, 20);
+
+        const content = paragraphs.join("\n\n");
+
+        // 🔥 Final structured output
+        return JSON.stringify({
+            result: {
+                title,
+                description,
+                headings,
+                content,
+                summary_hint: `Summarize the following content from "${title}" focusing on key insights and important points.`
+            }
+        });
+
+    } catch (e) {
+        return JSON.stringify({
+            error: `Failed to extract content: ${e.message}`
+        });
+    }
+};
+</script>
+</body>
+</html>
